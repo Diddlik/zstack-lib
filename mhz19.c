@@ -6,14 +6,14 @@
 #include "hal_uart.h"
 
 #ifndef CO2_UART_PORT
-#define CO2_UART_PORT HAL_UART_PORT_0
+#define CO2_UART_PORT HAL_UART_PORT_1
 #endif
 
 #define MHZ18_RESPONSE_LENGTH 13
 
 static void MHZ19_SetABC(bool isEnabled);
 static void MHZ19_RequestMeasure(void);
-static uint16 MHZ19_Read(uint8 *response);
+static uint16 MHZ19_Read(void);
 
 zclAirSensor_t MHZ19_dev = {&MHZ19_RequestMeasure, &MHZ19_Read, &MHZ19_SetABC};
 
@@ -31,17 +31,24 @@ void MHZ19_SetABC(bool isEnabled) {
 }
 
 void MHZ19_RequestMeasure(void) {
+    printf("Mhz19 Request");
     HalUARTWrite(CO2_UART_PORT, MHZ19_COMMAND_GET_PPM, sizeof(MHZ19_COMMAND_GET_PPM) / sizeof(MHZ19_COMMAND_GET_PPM[0]));
 }
 
-uint16 MHZ19_Read(uint8 *response) {
+uint16 MHZ19_Read(void) {
+    uint8 response[MHZ18_RESPONSE_LENGTH];
+    HalUARTRead(CO2_UART_PORT, (uint8 *)&response, sizeof(response) / sizeof(response[0]));
 
+    for(int i=0;i<MHZ18_RESPONSE_LENGTH;i++){
+      printf("%x ", response[i]);
+      }
+    
     if (response[0] != 0xFF || response[1] != 0x86) {
         LREPMaster("MHZ18 Invalid response\r\n");
         return AIR_QUALITY_INVALID_RESPONSE;
     }
 
     const uint16 ppm = (((uint16)response[2]) << 8) | response[3];
-    //LREP("MHZ18 Received CO₂=%d ppm\r\n", ppm);
+    LREP("MHZ18 Received CO₂=%d ppm\r\n", ppm);
     return ppm;
 }
